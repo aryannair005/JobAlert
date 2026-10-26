@@ -89,6 +89,9 @@ services:
     build: .
     command: ["npm","run","dev:web","--","--host","0.0.0.0"]
     env_file: .env
+    environment:
+      API_PROXY_TARGET: http://gateway:4000
+      VITE_API_BASE_URL: /api
     ports: ["5173:5173"]
     depends_on: [gateway]
 volumes:
