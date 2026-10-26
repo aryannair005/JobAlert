@@ -1,0 +1,7 @@
+import "dotenv/config";import express from "express";import mongoose from "mongoose";import {connectMongo} from "../../shared/mongo.js";
+const app=express(),port=Number(process.env.PORT||4102);app.use(express.json());
+const names=["Google","Microsoft","Amazon","Adobe","Atlassian","Salesforce","Oracle","Cisco","NVIDIA","Intel","Qualcomm","Walmart Global Tech","Flipkart","PhonePe","Razorpay","Paytm","Zoho","Freshworks","Swiggy","Zomato"];
+const schema=new mongoose.Schema({name:{type:String,required:true,unique:true},website:String,sourceType:{type:String,default:"unconfigured"},enabled:{type:Boolean,default:true}},{timestamps:true});const Company=mongoose.models.Company||mongoose.model("Company",schema);
+app.get("/health",(_req,res)=>res.json({service:"user-service",status:"ok"}));
+app.get("/companies",async(_req,res)=>{try{const companies=await Company.find({enabled:true}).sort({name:1}).lean();res.json({companies:companies.length?companies:names.map(name=>({name,sourceType:"unconfigured",enabled:true}))})}catch(e){console.error("[users] companies:",e.message);res.status(500).json({error:"COMPANIES_UNAVAILABLE"})}});
+async function start(){await connectMongo("user-service");await Company.bulkWrite(names.map(name=>({updateOne:{filter:{name},update:{$setOnInsert:{name,sourceType:"unconfigured",enabled:true}},upsert:true}})));app.listen(port,()=>console.log("[user-service] listening on "+port))}start().catch(e=>{console.error("[user-service] startup failed:",e);process.exit(1)});

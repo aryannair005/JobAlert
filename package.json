@@ -1,0 +1,19 @@
+{
+  "name":"devalert","version":"0.1.0","private":true,"type":"module",
+  "description":"Software engineering job and internship alerts",
+  "scripts":{
+    "dev:web":"vite --host 0.0.0.0",
+    "dev:gateway":"node services/api-gateway/src/index.js",
+    "dev:auth":"node services/auth-service/src/index.js",
+    "dev:users":"node services/user-service/src/index.js",
+    "dev:jobs":"node services/job-service/src/index.js",
+    "dev:ingestion":"node services/ingestion-worker/src/index.js",
+    "dev:notifications":"node services/notification-worker/src/index.js",
+    "dev":"concurrently -k -n web,gateway,auth,users,jobs,ingestion,notifications \"npm:dev:web\" \"npm:dev:gateway\" \"npm:dev:auth\" \"npm:dev:users\" \"npm:dev:jobs\" \"npm:dev:ingestion\" \"npm:dev:notifications\"",
+    "build":"vite build","test":"node --test"
+  },
+  "dependencies":{
+    "bcryptjs":"^2.4.3","bullmq":"^5.58.5","concurrently":"^9.2.1","cors":"^2.8.5","dotenv":"^16.6.1","express":"^5.1.0","helmet":"^8.1.0","ioredis":"^5.7.0","jsonwebtoken":"^9.0.2","mongoose":"^8.19.1","nodemailer":"^7.0.9","react":"^19.2.0","react-dom":"^19.2.0","vite":"^7.1.12"
+  },
+  "devDependencies":{"@vitejs/plugin-react":"^5.0.4"}
+}

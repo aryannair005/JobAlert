@@ -1,0 +1,96 @@
+services:
+  mongo:
+    image: mongo:8
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-devalert}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-change-this-local-password}
+    ports: ["27017:27017"]
+    volumes: [mongo-data:/data/db]
+    healthcheck:
+      test: ["CMD","mongosh","--quiet","--eval","db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server","--appendonly","yes"]
+    ports: ["6379:6379"]
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: ["CMD","redis-cli","ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  gateway:
+    build: .
+    command: ["node","services/api-gateway/src/index.js"]
+    env_file: .env
+    environment:
+      PORT: 4000
+      AUTH_SERVICE_URL: http://auth-service:4101
+      USER_SERVICE_URL: http://user-service:4102
+      JOB_SERVICE_URL: http://job-service:4103
+      WEB_ORIGIN: http://localhost:5173
+    ports: ["4000:4000"]
+    depends_on:
+      mongo: {condition: service_healthy}
+      auth-service: {condition: service_started}
+      user-service: {condition: service_started}
+      job-service: {condition: service_started}
+  auth-service:
+    build: .
+    command: ["node","services/auth-service/src/index.js"]
+    env_file: .env
+    environment:
+      PORT: 4101
+      MONGO_URI: mongodb://${MONGO_ROOT_USERNAME:-devalert}:${MONGO_ROOT_PASSWORD:-change-this-local-password}@mongo:27017/devalert?authSource=admin
+    depends_on:
+      mongo: {condition: service_healthy}
+  user-service:
+    build: .
+    command: ["node","services/user-service/src/index.js"]
+    env_file: .env
+    environment:
+      PORT: 4102
+      MONGO_URI: mongodb://${MONGO_ROOT_USERNAME:-devalert}:${MONGO_ROOT_PASSWORD:-change-this-local-password}@mongo:27017/devalert?authSource=admin
+    depends_on:
+      mongo: {condition: service_healthy}
+  job-service:
+    build: .
+    command: ["node","services/job-service/src/index.js"]
+    env_file: .env
+    environment:
+      PORT: 4103
+      MONGO_URI: mongodb://${MONGO_ROOT_USERNAME:-devalert}:${MONGO_ROOT_PASSWORD:-change-this-local-password}@mongo:27017/devalert?authSource=admin
+    depends_on:
+      mongo: {condition: service_healthy}
+  ingestion-worker:
+    build: .
+    command: ["node","services/ingestion-worker/src/index.js"]
+    env_file: .env
+    environment:
+      MONGO_URI: mongodb://${MONGO_ROOT_USERNAME:-devalert}:${MONGO_ROOT_PASSWORD:-change-this-local-password}@mongo:27017/devalert?authSource=admin
+      REDIS_URL: redis://redis:6379
+      INGEST_INTERVAL_MS: ${INGEST_INTERVAL_MS:-300000}
+    depends_on:
+      mongo: {condition: service_healthy}
+      redis: {condition: service_healthy}
+  notification-worker:
+    build: .
+    command: ["node","services/notification-worker/src/index.js"]
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis: {condition: service_healthy}
+  web:
+    build: .
+    command: ["npm","run","dev:web","--","--host","0.0.0.0"]
+    env_file: .env
+    ports: ["5173:5173"]
+    depends_on: [gateway]
+volumes:
+  mongo-data:
+  redis-data:
